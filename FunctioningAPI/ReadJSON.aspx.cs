@@ -46,7 +46,6 @@ namespace JSONAPI
 
                 //kobler til database og setter inn API samlingene      
                 UpdateDB(driversCollection, constructorsCollection, racesCollection, circuitsCollection, cmd);
-
             }
         }
 
@@ -288,7 +287,7 @@ namespace JSONAPI
         private static MySqlCommand EstablishConnectionToDB()
         {
             //Etablerer tilkobling
-            string cs = @"server=256328.db.tornado-node.net;userid=mysql256328;password=V\S|=Sv*D*Z3;database=mysql256328";
+            string cs = @"server=256328.db.tornado-node.net;userid=mysql256328;password=txLmaLCLr38q8q8M!vbfV;database=mysql256328";
             var con = new MySqlConnection(cs);
             con.Open();
             var cmd = new MySqlCommand();
