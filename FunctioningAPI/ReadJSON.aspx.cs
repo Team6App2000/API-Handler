@@ -19,54 +19,171 @@ using MySql.Data.MySqlClient;
 namespace JSONAPI
 {
     /*
-    Når siden ReadJSON.aspx lader, så henter ReadJSON.aspx.cs informasjon fra API og lagrer den i instansierte collections for å gjøre
+    Når ReadJSON.aspx lader, så henter ReadJSON.aspx.cs informasjon fra API og lagrer den i instansierte collections for å gjøre
     informasjonen mulig å aksessere og behandle. Når den har hentet alt av informasjon den trenger fra API så 
     kobler den seg opp mot MySQL databasen og laster opp informasjonen.
     */
     public partial class ReadJSON : System.Web.UI.Page
     {
+        StringBuilder driversTable = new StringBuilder();
+        StringBuilder constructorsTable = new StringBuilder();
+        StringBuilder racesTable = new StringBuilder();
+        StringBuilder circuitsTable = new StringBuilder();
+        StringBuilder resultsTable = new StringBuilder();
         protected void Page_Load(object sender, EventArgs e)
         {
             using (var webClient = new WebClient())
             {
                 //henter informasjonen for samlingene gjennom webklienten og instansierer
+                MySqlCommand cmd = EstablishConnectionToDB();
                 DriversCollection driversCollection = GetDriversFromAPI(webClient);
                 ConstructorsCollection constructorsCollection = GetConstructorsFromAPI(webClient);
                 CircuitsCollection circuitsCollection = GetCircuitsFromAPI(webClient);
                 RacesCollection racesCollection = GetRacesFromAPI(webClient);
 
-                Debug.WriteLine(driversCollection.Drivers.Count);
-                //kobler til database og setter inn API samlingene
-                ConnectToDBAndUpdate(driversCollection, constructorsCollection, racesCollection, circuitsCollection);
+                //viser det den har hentet fra API i tabeller
+                DisplayTables(driversCollection, constructorsCollection, racesCollection, circuitsCollection);
+
+                //kobler til database og setter inn API samlingene      
+                UpdateDB(driversCollection, constructorsCollection, racesCollection, circuitsCollection, cmd);
+
             }
         }
 
-        private static void ConnectToDBAndUpdate(DriversCollection driversCollection, ConstructorsCollection constructorsCollection, RacesCollection racesCollection, CircuitsCollection circuitsCollection)
+        private void DisplayTables(DriversCollection driversCollection, ConstructorsCollection constructorsCollection, RacesCollection racesCollection, CircuitsCollection circuitsCollection)
         {
-            //Etablerer tilkobling
-            string cs = @"server=256328.db.tornado-node.net;userid=mysql256328;password=V\S|=Sv*D*Z3;database=mysql256328";
-            var con = new MySqlConnection(cs);
-            con.Open();
-            var cmd = new MySqlCommand();
-            cmd.Connection = con;
+            if (!Page.IsPostBack)
+            {
+                //DRIVERS
+                driversTable.Append("<h1>DRIVERS</h1>");
+                driversTable.Append("<table border ='1'>");
+                driversTable.Append("<tr><th>Driver ID</th><th>url</th><th>Given name</th><th>Family name</th><th>Date of Birth</th><th>Nationality</th>");
+                driversTable.Append("</tr>");
+
+                for (var i = 0; i < driversCollection.Drivers.Count; i++)
+                {
+                    driversTable.Append("<tr>");
+                    driversTable.Append("<td>" + driversCollection.Drivers[i].DriverID + "</td>");
+                    driversTable.Append("<td>" + driversCollection.Drivers[i].Url + "</td>");
+                    driversTable.Append("<td>" + driversCollection.Drivers[i].GivenName + "</td>");
+                    driversTable.Append("<td>" + driversCollection.Drivers[i].FamilyName + "</td>");
+                    driversTable.Append("<td>" + driversCollection.Drivers[i].DateOfBirth + "</td>");
+                    driversTable.Append("<td>" + driversCollection.Drivers[i].Nationality + "</td>");
+                    driversTable.Append("</tr>");
+                }
+                driversTable.Append("</table>");
+                PlaceHolder1.Controls.Add(new Literal { Text = driversTable.ToString() });
+
+                //CONSTRUCTORS
+                constructorsTable.Append("<h1>CONSTRUCTORS</h1>");
+                constructorsTable.Append("<table border ='1'>");
+                constructorsTable.Append("<tr><th>Constructor ID</th><th>url</th><th>Name</th><th>Nationality</th>");
+                constructorsTable.Append("</tr>");
+
+                for (var i = 0; i < constructorsCollection.Constructors.Count; i++)
+                {
+                    constructorsTable.Append("<tr>");
+                    constructorsTable.Append("<td>" + constructorsCollection.Constructors[i].ConstructorID + "</td>");
+                    constructorsTable.Append("<td>" + constructorsCollection.Constructors[i].Url + "</td>");
+                    constructorsTable.Append("<td>" + constructorsCollection.Constructors[i].Name + "</td>");
+                    constructorsTable.Append("<td>" + constructorsCollection.Constructors[i].Nationality + "</td>");
+                    constructorsTable.Append("</tr>");
+                }
+                constructorsTable.Append("</table>");
+                PlaceHolder2.Controls.Add(new Literal { Text = constructorsTable.ToString() });
+
+                //RACES 
+                racesTable.Append("<h1>RACES</h1>");
+                racesTable.Append("<table border ='1'>");
+                racesTable.Append("<tr><th>Race name</th><th>Circuit name</th><th>url</th><th>Season</th><th>Round</th><th>Date</th><th>Time</th>");
+                racesTable.Append("</tr>");
+
+                for (var i = 0; i < racesCollection.Races.Count; i++)
+                {
+                    racesTable.Append("<tr>");
+                    racesTable.Append("<td>" + racesCollection.Races[i].RaceName + "</td>");
+                    racesTable.Append("<td>" + racesCollection.Races[i].Circuit.CircuitName + "</td>");
+                    racesTable.Append("<td>" + racesCollection.Races[i].Url + "</td>");
+                    racesTable.Append("<td>" + racesCollection.Races[i].Season + "</td>");
+                    racesTable.Append("<td>" + racesCollection.Races[i].Round + "</td>");
+                    racesTable.Append("<td>" + racesCollection.Races[i].Date + "</td>");
+                    racesTable.Append("<td>" + racesCollection.Races[i].Time + "</td>");
+                    racesTable.Append("</tr>");
+                }
+                racesTable.Append("</table>");
+                PlaceHolder3.Controls.Add(new Literal { Text = racesTable.ToString() });
+
+                //CIRCUITS
+                circuitsTable.Append("<h1>CIRCUITS</h1>");
+                circuitsTable.Append("<table border ='1'>");
+                circuitsTable.Append("<tr><th>Circuit ID</th><th>url</th><th>Circuit Name</th><th>Location</th><th>Country</th>");
+                circuitsTable.Append("</tr>");
+
+                for (var i = 0; i < circuitsCollection.Circuits.Count; i++)
+                {
+                    circuitsTable.Append("<tr>");
+                    circuitsTable.Append("<td>" + circuitsCollection.Circuits[i].CircuitId + "</td>");
+                    circuitsTable.Append("<td>" + circuitsCollection.Circuits[i].Url + "</td>");
+                    circuitsTable.Append("<td>" + circuitsCollection.Circuits[i].CircuitName + "</td>");
+                    circuitsTable.Append("<td>" + circuitsCollection.Circuits[i].Location.Locality + "</td>");
+                    circuitsTable.Append("<td>" + circuitsCollection.Circuits[i].Location.Country + "</td>");
+                    circuitsTable.Append("</tr>");
+                }
+                circuitsTable.Append("</table>");
+                PlaceHolder4.Controls.Add(new Literal { Text = circuitsTable.ToString() });
+
+                //RESULTS
+                int y = racesCollection.Races.Count;
+                int n = driversCollection.Drivers.Count;
+                resultsTable.Append("<h1>RESULTS</h1>");
+                resultsTable.Append("<table border ='1'>");
+                resultsTable.Append("<tr><th>Constructor ID</th><th>Race name</th><th>Circuit ID</th><th>Driver ID</th><th>Number</th><th>Position</th><th>Points</th><th>Grid</th><th>Laps</th><th>Status</th>");
+                resultsTable.Append("</tr>");
+
+                for (int m = 0; m < y; m++) //teller antall sets av resultater
+                {
+                    for (var i = 0; i < n; i++)
+                    {
+                        resultsTable.Append("<tr>");
+                        resultsTable.Append("<td>" + racesCollection.Races[m].Results[i].Constructor.ConstructorId + "</td>");
+                        resultsTable.Append("<td>" + racesCollection.Races[m].RaceName + "</td>");
+                        resultsTable.Append("<td>" + racesCollection.Races[m].Circuit.CircuitId + "</td>");
+                        resultsTable.Append("<td>" + racesCollection.Races[m].Results[i].Driver.DriverId + "</td>");
+                        resultsTable.Append("<td>" + racesCollection.Races[m].Results[i].Number + "</td>");
+                        resultsTable.Append("<td>" + racesCollection.Races[m].Results[i].Position + "</td>");
+                        resultsTable.Append("<td>" + racesCollection.Races[m].Results[i].Points + "</td>");
+                        resultsTable.Append("<td>" + racesCollection.Races[m].Results[i].Grid + "</td>");
+                        resultsTable.Append("<td>" + racesCollection.Races[m].Results[i].Laps + "</td>");
+                        resultsTable.Append("<td>" + racesCollection.Races[m].Results[i].Status + "</td>");
+                        resultsTable.Append("</tr>");
+                    }
+                }
+                resultsTable.Append("</table>");
+                PlaceHolder5.Controls.Add(new Literal { Text = resultsTable.ToString() });
+            }
+
+        }
+
+        private static void UpdateDB(DriversCollection driversCollection, ConstructorsCollection constructorsCollection, RacesCollection racesCollection, CircuitsCollection circuitsCollection, MySqlCommand cmd)
+        {
 
             //tømmer tabellene
+            cmd.CommandText = "DELETE FROM ResultsTest";
+            cmd.ExecuteNonQuery();
+            cmd.CommandText = "DELETE FROM RacesTest";
+            cmd.ExecuteNonQuery();
             cmd.CommandText = "DELETE FROM DriversTest";
             cmd.ExecuteNonQuery();
             cmd.CommandText = "DELETE FROM ConstructorsTest";
             cmd.ExecuteNonQuery();
-            cmd.CommandText = "DELETE FROM RacesTest";
-            cmd.ExecuteNonQuery();
             cmd.CommandText = "DELETE FROM CircuitsTest";
-            cmd.ExecuteNonQuery();
-            cmd.CommandText = "DELETE FROM ResultsTest";
             cmd.ExecuteNonQuery();
 
             //cmd.CommandText setter kommandolinje teksten til spørringer. Husk ingen semicolon, den gjør det automatisk
             cmd.CommandText = "INSERT INTO DriversTest(driverId, url, givenName, familyName, dateOfBirth, nationality) VALUES(@driverId, @url, @givenName, @familyName, @dateOfBirth, @nationality)";
 
             int t = driversCollection.Drivers.Count;
-            Debug.WriteLine("DriversCount: " +t);
+            Debug.WriteLine("DriversCount: " + t);
 
             for (int i = 0; i < t; i++)
             {
@@ -137,9 +254,10 @@ namespace JSONAPI
                 Debug.WriteLine("Row added to Races");
             }
 
-           cmd.CommandText = "INSERT INTO ResultsTest(resultId, constructorId, raceName, circuitId, driverId, number, position, points, grid, laps, status) VALUES(DEFAULT, @constructorId, @raceName, @circuitId, @driverId, @number, @position, @points, @grid, @laps, @status)";
+            cmd.CommandText = "INSERT INTO ResultsTest(resultId, constructorId, raceName, circuitId, driverId, number, position, points, grid, laps, status) VALUES(DEFAULT, @constructorId, @raceName, @circuitId, @driverId, @number, @position, @points, @grid, @laps, @status)";
 
-            for(int m = 0; m < y; m++) { //teller antall sets av resultater
+            for (int m = 0; m < y; m++)
+            { //teller antall sets av resultater
 
                 Debug.WriteLine("m is now " + m);
                 //int n = racesCollection.Races[m].Results.Count; kan telle antall resultater for hvert løp, men ikke nødvendig siden antall drivers er konstant
@@ -162,17 +280,20 @@ namespace JSONAPI
                     Debug.WriteLine("Result for driver " + i);
                     Debug.WriteLine("Row added for Race " + m);
                 }
-                
+
             }
 
-            /*
-            For å gjøre andre spørringer i konsoll som gir svar tilbake bruker man ExecuteScalar() i stedet for ExecuteNonQuery().
-            Kan gjøres på lik måte som over om man ønsker resultat for å beholde i variabel eller slik:
+        }
 
-            cmd.CommandText = "SELECT COUNT(driverId) FROM Drivers";
-            var query = cmd.ExecuteScalar().ToString();
-            System.Diagnostics.Debug.WriteLine($"MySQL query: {query}");
-            */
+        private static MySqlCommand EstablishConnectionToDB()
+        {
+            //Etablerer tilkobling
+            string cs = @"server=256328.db.tornado-node.net;userid=mysql256328;password=V\S|=Sv*D*Z3;database=mysql256328";
+            var con = new MySqlConnection(cs);
+            con.Open();
+            var cmd = new MySqlCommand();
+            cmd.Connection = con;
+            return cmd;
         }
 
         private static JObject FormatJSON(ref string JSON)
